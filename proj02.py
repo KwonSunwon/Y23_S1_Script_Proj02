@@ -18,7 +18,7 @@ import json_manager
 user_data = {}
 
 
-async def call_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def call_help(update, context):
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
         text="""
@@ -37,7 +37,7 @@ async def call_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-async def introduce(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def introduce(update, context):
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
         text="""
@@ -48,10 +48,20 @@ async def introduce(update: Update, context: ContextTypes.DEFAULT_TYPE):
 선택하실 수 있습니다.""",
     )
 
-    print(update.effective_chat.id)
+    if update.message.chat_id not in user_data:
+        user_data[str(update.message.chat_id)] = {
+            "login_info": {
+                "id": "x",
+                "pw": "",
+            },
+            "sports": "축구",
+            "location": "서울",
+            "keyword": "넥슨",
+        }
+    json_manager.save_user_data("user_data.json", user_data)
 
 
-async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def echo(update, context):
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
         text=update.message.text,
@@ -134,6 +144,11 @@ async def button_callback(update, context):
     )
 
 
+async def call_selectkeyword(update, context):
+    user_data[str(update.message.chat_id)]["keyword"] = context.args[0]
+    json_manager.save_user_data("user_data.json", user_data)
+
+
 if __name__ == "__main__":
     # 사용자 데이터
     user_data = json_manager.load_user_data("user_data.json")
@@ -144,15 +159,16 @@ if __name__ == "__main__":
     start_handler = CommandHandler("start", introduce)
     help_handler = CommandHandler("help", call_help)
     select_keyword_handler = CommandHandler("selectkeyword", call_selectkeyword)
-    select_locate_handler = CommandHandler("selectlocate", call_selectlocate)
+    # select_locate_handler = CommandHandler("selectlocate", call_selectlocate)
 
-    eclassid_handler = CommandHandler("eclassid", call_eclassid)
-    eclasspw_handler = CommandHandler("eclasspw", call_eclasspw)
+    # eclassid_handler = CommandHandler("eclassid", call_eclassid)
+    # eclasspw_handler = CommandHandler("eclasspw", call_eclasspw)
 
     echo_handler = MessageHandler(filters.TEXT & (~filters.COMMAND), echo)
 
     application.add_handler(start_handler)
     application.add_handler(help_handler)
+    application.add_handler(select_keyword_handler)
 
     # Inline Keyboard
     select_handler = CommandHandler("selectsport", call_selectsport)
