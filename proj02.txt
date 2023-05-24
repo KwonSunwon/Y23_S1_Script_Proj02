@@ -1,0 +1,31 @@
+서점 db?
+내가 등록해 놓은 장르에 대한 신간 도서 검색
+구매 링크 제공
+
+하루요약
+텔레그램 봇에 요청을 하면
+이클래스에 알림
+이클래스에 오늘 일정
+오늘 듣는 과목
+오늘 헤드라인 + 해외축구 기사
+오늘의 날씨
+미리 관심 기업을 등록하면 그 기업의 뉴스까지 추가로 전달
+
+의의...
+각각 다 다른 어플에서 해야하는 행동인데
+텔레그램 봇 하나로 해결
+python-telegram-bot
+
+"https://m.search.naver.com/search.naver?where=m_news&query=%EC%95%A0%ED%94%8C&sm=mtb_opt&sort=0&photo=0&field=0&pd=4&ds=&de=&docid=&related=0&mynews=0&office_type=0&office_section_code=0&news_office_checked=&nso=so%3Ar%2Cp%3A1d&is_sug_officeid=0"
+
+버튼식으로 아이디 등록하고 하는건 제대로 안될거 같은데...
+
+명령어
+/help : 명령어 설명
+/today : 오늘 요약(이클래스 수업, 일정, 알림 개수, 날씨, 키워드 뉴스, 스포츠 뉴스)
+/selectkeyword : 관심 키워드 등록
+/selectlocate : 날씨 지역 등록 
+-> sc_new cs_weather_new _cs_weather 해당 HTML 클래스로 날씨가 제공되는 지역인지 확인
+/selectsports : 관심 스포츠 등록 -> 버튼식 선택 가능?
+/eclassid : 이클래스 아이디 등록
+/eclasspw : 이클래스 비밀번호 등록
