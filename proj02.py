@@ -1,5 +1,3 @@
-""" proj02.py """
-
 from telegram import (
     Update,
     InlineKeyboardButton,
@@ -21,7 +19,6 @@ user_data = {}
 
 
 async def call_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """도움말 명령어"""
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
         text="""
@@ -41,7 +38,6 @@ async def call_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def introduce(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """시작 명령어"""
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
         text="""
@@ -56,7 +52,6 @@ async def introduce(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """메시지를 그대로 돌려줍니다."""
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
         text=update.message.text,
@@ -64,7 +59,6 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def call_selectsport(update, context):
-    """스포츠 종목을 버튼으로 선택"""
     task_buttons = [
         [
             InlineKeyboardButton("야구", callback_data=1),
@@ -102,7 +96,6 @@ async def call_selectsport(update, context):
 
 
 async def button_callback(update, context):
-    """실제 버튼을 눌렀을 때"""
     query = update.callback_query
     data = query.data
 
