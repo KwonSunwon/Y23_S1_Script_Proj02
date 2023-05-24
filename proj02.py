@@ -148,6 +148,21 @@ async def call_selectkeyword(update, context):
     user_data[str(update.message.chat_id)]["keyword"] = context.args[0]
     json_manager.save_user_data("user_data.json", user_data)
 
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text=f"키워드가 {context.args[0]}로 변경되었습니다.",
+    )
+
+
+async def call_selectlocate(update, context):
+    user_data[str(update.message.chat_id)]["location"] = context.args[0]
+    json_manager.save_user_data("user_data.json", user_data)
+
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text=f"지역이 {context.args[0]}으로 변경되었습니다.",
+    )
+
 
 if __name__ == "__main__":
     # 사용자 데이터
@@ -159,7 +174,7 @@ if __name__ == "__main__":
     start_handler = CommandHandler("start", introduce)
     help_handler = CommandHandler("help", call_help)
     select_keyword_handler = CommandHandler("selectkeyword", call_selectkeyword)
-    # select_locate_handler = CommandHandler("selectlocate", call_selectlocate)
+    select_locate_handler = CommandHandler("selectlocate", call_selectlocate)
 
     # eclassid_handler = CommandHandler("eclassid", call_eclassid)
     # eclasspw_handler = CommandHandler("eclasspw", call_eclasspw)
@@ -169,8 +184,8 @@ if __name__ == "__main__":
     application.add_handler(start_handler)
     application.add_handler(help_handler)
     application.add_handler(select_keyword_handler)
+    application.add_handler(select_locate_handler)
 
-    # Inline Keyboard
     select_handler = CommandHandler("selectsport", call_selectsport)
     callback_handler = CallbackQueryHandler(button_callback)
 
