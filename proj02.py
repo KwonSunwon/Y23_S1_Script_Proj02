@@ -178,6 +178,10 @@ async def call_register(update, context):
     )
 
 
+async def call_today(update, context):
+    pass
+
+
 if __name__ == "__main__":
     # 사용자 데이터
     user_data = json_manager.load_user_data("user_data.json")
@@ -190,6 +194,7 @@ if __name__ == "__main__":
     select_keyword_handler = CommandHandler("selectkeyword", call_selectkeyword)
     select_locate_handler = CommandHandler("selectlocate", call_selectlocate)
     register_handler = CommandHandler("eclass", call_register)
+    today_handler = CommandHandler("today", call_today)
 
     # eclassid_handler = CommandHandler("eclassid", call_eclassid)
     # eclasspw_handler = CommandHandler("eclasspw", call_eclasspw)
@@ -201,6 +206,7 @@ if __name__ == "__main__":
     application.add_handler(select_keyword_handler)
     application.add_handler(select_locate_handler)
     application.add_handler(register_handler)
+    application.add_handler(today_handler)
 
     select_handler = CommandHandler("selectsport", call_selectsport)
     callback_handler = CallbackQueryHandler(button_callback)
