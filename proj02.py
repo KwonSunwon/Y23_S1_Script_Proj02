@@ -10,6 +10,7 @@ from telegram.ext import (
     CommandHandler,
     MessageHandler,
     CallbackQueryHandler,
+    ConversationHandler,
 )
 
 import myToken
@@ -182,6 +183,45 @@ async def call_today(update, context):
     pass
 
 
+INPUT_ID, INPUT_PW = range(2)
+
+
+async def test(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text="eClass 아이디를 입력해주세요.",
+    )
+    return INPUT_ID
+
+
+async def input_id(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    user_data[str(update.message.chat_id)]["login_info"]["id"] = update.message.text
+    json_manager.save_user_data("user_data.json", user_data)
+
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text="eClass 비밀번호를 입력해주세요.",
+    )
+
+    return INPUT_PW
+
+
+async def input_pw(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    user_data[str(update.message.chat_id)]["login_info"]["pw"] = update.message.text
+    json_manager.save_user_data("user_data.json", user_data)
+
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text="eClass 로그인 정보가 등록되었습니다.",
+    )
+
+    return ConversationHandler.END
+
+
+async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    return ConversationHandler.END
+
+
 if __name__ == "__main__":
     # 사용자 데이터
     user_data = json_manager.load_user_data("user_data.json")
@@ -213,5 +253,16 @@ if __name__ == "__main__":
 
     application.add_handler(select_handler)
     application.add_handler(callback_handler)
+
+    eclass_register_handler = ConversationHandler(
+        entry_points=[CommandHandler("test", test)],
+        states={
+            INPUT_ID: [MessageHandler(filters.TEXT & (~filters.COMMAND), input_id)],
+            INPUT_PW: [MessageHandler(filters.TEXT & (~filters.COMMAND), input_pw)],
+        },
+        fallbacks=[CommandHandler("cancel", cancel)],
+    )
+
+    application.add_handler(eclass_register_handler)
 
     application.run_polling()
