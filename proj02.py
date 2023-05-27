@@ -1,3 +1,6 @@
+import threading
+from queue import Queue
+
 from telegram import (
     Update,
     InlineKeyboardButton,
@@ -15,6 +18,7 @@ from telegram.ext import (
 
 import myToken
 import json_manager
+import scrap
 
 user_data = {}
 
@@ -180,7 +184,44 @@ async def call_register(update, context):
 
 
 async def call_today(update, context):
-    pass
+    scrap_result = Queue()
+
+    thread_news = threading.Thread(
+        target=scrap.get_news,
+        args=[scrap_result, user_data[str(update.message.chat_id)]["keyword"]],
+    )
+    thread_sports = threading.Thread(
+        target=scrap.get_sports_news,
+        args=[scrap_result, user_data[str(update.message.chat_id)]["sports"]],
+    )
+    thread_eClass = threading.Thread(
+        target=scrap.get_eClass,
+        args=[
+            scrap_result,
+            user_data[str(update.message.chat_id)]["login_info"]["id"],
+            user_data[str(update.message.chat_id)]["login_info"]["pw"],
+        ],
+    )
+    thread_weather = threading.Thread(
+        target=scrap.get_weather,
+        args=[scrap_result, user_data[str(update.message.chat_id)]["location"]],
+    )
+
+    thread_news.start()
+    thread_sports.start()
+    thread_eClass.start()
+    thread_weather.start()
+
+    thread_news.join()
+    thread_sports.join()
+    thread_eClass.join()
+    thread_weather.join()
+
+    for r in scrap_result.queue:
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text=r,
+        )
 
 
 INPUT_ID, INPUT_PW = range(2)
@@ -219,6 +260,10 @@ async def input_pw(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text="취소되었습니다.",
+    )
     return ConversationHandler.END
 
 
