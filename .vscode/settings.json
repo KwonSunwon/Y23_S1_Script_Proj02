@@ -3,9 +3,13 @@
     "eclass",
     "eclassid",
     "eclasspw",
+    "kbaseball",
+    "kfootball",
     "selectkeyword",
     "selectlocate",
     "selectsport",
-    "selectsports"
+    "selectsports",
+    "wbaseball",
+    "wfootball"
 ]
 }

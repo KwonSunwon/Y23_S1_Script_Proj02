@@ -74,7 +74,7 @@ async def echo(update, context):
     )
 
 
-async def call_selectsport(update, context):
+async def call_selectsports(update, context):
     task_buttons = [
         [
             InlineKeyboardButton("야구", callback_data=1),
@@ -97,16 +97,16 @@ async def call_selectsport(update, context):
 
     reply_markup = InlineKeyboardMarkup(task_buttons)
 
-    target_sport = ""
+    target_sports = ""
     chat_id = update.message.chat_id
     for user in user_data:
         if int(user) == chat_id:
-            target_sport = user_data[user]["sports"]
+            target_sports = user_data[user]["sports"]
             break
 
     await context.bot.send_message(
         chat_id=update.message.chat_id,
-        text=f"현재 선택 종목은 {target_sport}입니다.\r\n종목을 선택해주세요.",
+        text=f"현재 선택 종목은 {target_sports}입니다.\r\n종목을 선택해주세요.",
         reply_markup=reply_markup,
     )
 
@@ -123,30 +123,39 @@ async def button_callback(update, context):
         )
         return
 
+    sports_text = ""
     sports = ""
     if data == "1":
-        sports = "야구"
+        sports_text = "야구"
+        sports = "kbaseball"
     elif data == "2":
-        sports = "해외야구"
+        sports_text = "해외야구"
+        sports = "wbaseball"
     elif data == "3":
-        sports = "축구"
+        sports_text = "축구"
+        sports = "kfootball"
     elif data == "4":
-        sports = "해외축구"
+        sports_text = "해외축구"
+        sports = "wfootball"
     elif data == "5":
-        sports = "농구"
+        sports_text = "농구"
+        sports = "basketball"
     elif data == "6":
-        sports = "배구"
+        sports_text = "배구"
+        sports = "volleyball"
     elif data == "7":
-        sports = "골프"
+        sports_text = "골프"
+        sports = "golf"
     elif data == "8":
-        sports = "일반"
+        sports_text = "일반"
+        sports = "general"
 
     user_data[str(query.message.chat_id)]["sports"] = sports
     json_manager.save_user_data("user_data.json", user_data)
     await context.bot.edit_message_text(
         chat_id=query.message.chat_id,
         message_id=query.message.message_id,
-        text=f"스포츠 뉴스 종목이 {sports}로 변경되었습니다.",
+        text=f"스포츠 뉴스 종목이 {sports_text}로 변경되었습니다.",
     )
 
 
@@ -217,11 +226,14 @@ async def call_today(update, context):
     thread_eClass.join()
     thread_weather.join()
 
+    result = ""
     for r in scrap_result.queue:
-        await context.bot.send_message(
-            chat_id=update.effective_chat.id,
-            text=r,
-        )
+        result += r
+
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text=result,
+    )
 
 
 INPUT_ID, INPUT_PW = range(2)
@@ -293,7 +305,7 @@ if __name__ == "__main__":
     application.add_handler(register_handler)
     application.add_handler(today_handler)
 
-    select_handler = CommandHandler("selectsport", call_selectsport)
+    select_handler = CommandHandler("selectsports", call_selectsports)
     callback_handler = CallbackQueryHandler(button_callback)
 
     application.add_handler(select_handler)
