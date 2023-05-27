@@ -15,6 +15,7 @@ from telegram.ext import (
     CallbackQueryHandler,
     ConversationHandler,
 )
+from telegram.constants import ChatAction
 
 import myToken
 import json_manager
@@ -214,6 +215,11 @@ async def call_today(update, context):
     thread_weather = threading.Thread(
         target=scrap.get_weather,
         args=[scrap_result, user_data[str(update.message.chat_id)]["location"]],
+    )
+
+    await context.bot.send_chat_action(
+        chat_id=update.effective_chat.id,
+        action=ChatAction.TYPING,
     )
 
     thread_news.start()
