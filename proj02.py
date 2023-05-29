@@ -172,6 +172,13 @@ async def call_selectkeyword(update, context):
 
 
 async def call_selectlocate(update, context):
+    if len(context.args) == 0:
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text="지역을 입력해주세요.\n예시: /selectlocate 서울",
+        )
+        return
+
     result = Queue()
     thread = threading.Thread(
         target=scrap.location_check, args=[result, context.args[0]]
