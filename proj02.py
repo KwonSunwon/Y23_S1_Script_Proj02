@@ -1,5 +1,6 @@
 import threading
 from queue import Queue
+from collections import defaultdict
 
 from telegram import (
     Update,
@@ -36,7 +37,7 @@ async def call_help(update, context):
 /selectkeyword <키워드> : 뉴스 검색 키워드 선택
 /selectlocate <지역> : 날씨 안내 지역 선택
 
-/selectsport : 스포츠 뉴스 종목 선택
+/selectsports : 스포츠 뉴스 종목 선택
 
 /eclass <아이디> <비밀번호> : eClass 로그인 정보 입력""",
     )
@@ -174,10 +175,23 @@ async def call_selectlocate(update, context):
     user_data[str(update.message.chat_id)]["location"] = context.args[0]
     json_manager.save_user_data("user_data.json", user_data)
 
-    await context.bot.send_message(
-        chat_id=update.effective_chat.id,
-        text=f"지역이 {context.args[0]}으로 변경되었습니다.",
+    result = Queue()
+    thread = threading.Thread(
+        target=scrap.location_check, args=[result, context.args[0]]
     )
+    thread.start()
+    thread.join()
+
+    if result.get():
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text=f"지역이 {context.args[0]}으로 변경되었습니다.",
+        )
+    else:
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text="지역을 찾을 수 없습니다.",
+        )
 
 
 async def call_register(update, context):
@@ -194,6 +208,11 @@ async def call_register(update, context):
 
 
 async def call_today(update, context):
+    await context.bot.send_chat_action(
+        chat_id=update.effective_chat.id,
+        action=ChatAction.TYPING,
+    )
+
     scrap_result = Queue()
 
     thread_news = threading.Thread(
@@ -217,11 +236,6 @@ async def call_today(update, context):
         args=[scrap_result, user_data[str(update.message.chat_id)]["location"]],
     )
 
-    await context.bot.send_chat_action(
-        chat_id=update.effective_chat.id,
-        action=ChatAction.TYPING,
-    )
-
     thread_news.start()
     thread_sports.start()
     thread_eClass.start()
@@ -232,13 +246,20 @@ async def call_today(update, context):
     thread_eClass.join()
     thread_weather.join()
 
-    result = ""
+    result = defaultdict(str)
     for r in scrap_result.queue:
-        result += r
+        key, val = r.popitem()
+        result[key] = val
+
+    result_text = ""
+    result_text += result["weather"]
+    # result_text += result["eClass"]
+    result_text += result["news"]
+    result_text += result["sports"]
 
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
-        text=result,
+        text=result_text,
     )
 
 
