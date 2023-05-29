@@ -162,6 +162,13 @@ async def button_callback(update, context):
 
 
 async def call_selectkeyword(update, context):
+    if len(context.args) == 0:
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text="키워드를 입력해주세요.\n예시: /selectkeyword 넥슨",
+        )
+        return
+
     user_data[str(update.message.chat_id)]["keyword"] = context.args[0]
     json_manager.save_user_data("user_data.json", user_data)
 
