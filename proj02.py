@@ -62,7 +62,7 @@ async def introduce(update, context):
                 "id": "x",
                 "pw": "",
             },
-            "sports": "축구",
+            "sports": "kfootball",
             "location": "서울",
             "keyword": "넥슨",
         }
@@ -172,9 +172,6 @@ async def call_selectkeyword(update, context):
 
 
 async def call_selectlocate(update, context):
-    user_data[str(update.message.chat_id)]["location"] = context.args[0]
-    json_manager.save_user_data("user_data.json", user_data)
-
     result = Queue()
     thread = threading.Thread(
         target=scrap.location_check, args=[result, context.args[0]]
@@ -187,6 +184,8 @@ async def call_selectlocate(update, context):
             chat_id=update.effective_chat.id,
             text=f"지역이 {context.args[0]}으로 변경되었습니다.",
         )
+        user_data[str(update.message.chat_id)]["location"] = context.args[0]
+        json_manager.save_user_data("user_data.json", user_data)
     else:
         await context.bot.send_message(
             chat_id=update.effective_chat.id,
