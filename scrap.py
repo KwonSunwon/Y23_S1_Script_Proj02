@@ -3,6 +3,7 @@ from bs4 import BeautifulSoup
 from playwright.sync_api import sync_playwright
 import lxml
 
+
 SPORTS = {
     "kbaseball": "야구",
     "wbaseball": "해외야구",
@@ -39,8 +40,6 @@ def get_news(result: Queue().queue, keyword):
         # print(f"{title} {link=}")
         out_text += f"{title}\n{link}\n"
 
-    out_text += "\n"
-
     browser.close()
     p.stop()
 
@@ -72,16 +71,90 @@ def get_sports_news(result: Queue().queue, sports):
         # print(f"{title} {link=}")
         out_text += f"{title}\n{link}\n"
 
-    out_text += "\n"
-
     browser.close()
     p.stop()
 
     result.put({"sports": out_text})
 
 
-def get_eClass(result: Queue().queue, id, pw):
-    pass
+def eClass_check(result: Queue().queue, user):
+    url = "https://eclass.tukorea.ac.kr/ilos/main/member/login_form.acl"
+
+    p = sync_playwright().start()
+    browser = p.chromium.launch(headless=True).new_context(
+        user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36"
+    )
+    page = browser.new_page()
+    page.goto(url)
+
+    page.locator('input[name="usr_id"]').fill(user[0])
+    page.locator('input[name="usr_pwd"]').fill(user[1])
+    page.locator("#login_btn").click()
+
+    page.wait_for_timeout(500)
+
+    browser.close()
+    p.stop()
+
+    if page.url == url:
+        result.put(False)
+        return
+    result.put(True)
+
+
+def get_eClass(result: Queue().queue, user):
+    url = "https://eclass.tukorea.ac.kr/ilos/main/member/login_form.acl"
+
+    p = sync_playwright().start()
+    browser = p.chromium.launch(headless=True).new_context(
+        user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36"
+    )
+    page = browser.new_page()
+    page.goto(url)
+
+    page.locator('input[name="usr_id"]').fill(user[0])
+    page.locator('input[name="usr_pwd"]').fill(user[1])
+    # page.locator('input[name="usr_id"]').fill("2019182003")
+    # page.locator('input[name="usr_pwd"]').fill("3183129")
+    page.locator("#login_btn").click()
+
+    page.wait_for_timeout(1000)
+
+    if page.url == url:
+        browser.close()
+        p.stop()
+        result.put({"eClass": "로그인 실패\n/eclasslogin 을 통해 다시 입력해주세요."})
+        return
+
+    soup = BeautifulSoup(page.content(), "lxml")
+
+    today = soup.find("table", class_="course-datatable")
+    subject = today.find_all("td", class_="subject")
+
+    subject_list = set()
+    for sub in subject:
+        subject_list.add(sub.text)
+
+    # print(subject_list)
+
+    out_text = "오늘 수업\n"
+    for sub in subject_list:
+        out_text += f"{sub}\n"
+
+    out_text += "할일 - "
+    todo = soup.find("div", title="Todo List")
+    todo = todo.find("div", id="todoList_cnt")
+    out_text += todo.text + "\n"
+
+    out_text += "알림 - "
+    alarm = soup.find("div", title="알림")
+    alarm = alarm.find("div", id="notice_cnt")
+    out_text += alarm.text + "\n"
+
+    browser.close()
+    p.stop()
+
+    result.put({"eClass": out_text})
 
 
 def get_weather(result: Queue().queue, location):
@@ -99,7 +172,9 @@ def get_weather(result: Queue().queue, location):
     weather = soup.find("section", class_="sc_new cs_weather_new _cs_weather")
 
     if weather is None:
-        result.put("날씨 정보를 가져올 수 없습니다.")
+        result.put({"weather": "날씨 정보를 가져올 수 없습니다.\n"})
+        browser.close()
+        p.stop()
         return
 
     # 미세먼지 정보
@@ -131,8 +206,6 @@ def get_weather(result: Queue().queue, location):
     out_text += f"미세먼지 {dust1.text} 초미세먼지 {dust2.text}\n"
     out_text += f"강수확률 오전{rainfall1} 오후{rainfall2}\n"
     out_text += f"{temp1} {temp2}\n"
-
-    out_text += "\n"
 
     browser.close()
     p.stop()

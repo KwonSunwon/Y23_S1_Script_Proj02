@@ -23,6 +23,7 @@ import json_manager
 import scrap
 
 user_data = {}
+temp_login_info = ["", ""]
 
 
 async def call_help(update, context):
@@ -39,7 +40,7 @@ async def call_help(update, context):
 
 /selectsports : 스포츠 뉴스 종목 선택
 
-/eclass <아이디> <비밀번호> : eClass 로그인 정보 입력""",
+/eclasslogin : eClass 로그인 정보 입력""",
     )
 
 
@@ -58,10 +59,7 @@ async def introduce(update, context):
 
     if update.message.chat_id not in user_data:
         user_data[str(update.message.chat_id)] = {
-            "login_info": {
-                "id": "x",
-                "pw": "",
-            },
+            "login_info": ["", ""],  # id, pw
             "sports": "kfootball",
             "location": "서울",
             "keyword": "넥슨",
@@ -208,8 +206,8 @@ async def call_selectlocate(update, context):
 
 
 async def call_register(update, context):
-    user_data[str(update.message.chat_id)]["login_info"]["id"] = context.args[0]
-    user_data[str(update.message.chat_id)]["login_info"]["pw"] = context.args[1]
+    user_data[str(update.message.chat_id)]["login_info"][0] = context.args[0]
+    user_data[str(update.message.chat_id)]["login_info"][1] = context.args[1]
     json_manager.save_user_data("user_data.json", user_data)
 
     # eClass 아이디 유효성 확인하는 코드 추가하기
@@ -240,8 +238,7 @@ async def call_today(update, context):
         target=scrap.get_eClass,
         args=[
             scrap_result,
-            user_data[str(update.message.chat_id)]["login_info"]["id"],
-            user_data[str(update.message.chat_id)]["login_info"]["pw"],
+            user_data[str(update.message.chat_id)]["login_info"],
         ],
     )
     thread_weather = threading.Thread(
@@ -261,13 +258,17 @@ async def call_today(update, context):
 
     result = defaultdict(str)
     for r in scrap_result.queue:
+        # print(f"{type(r)} - {r}")
         key, val = r.popitem()
         result[key] = val
 
     result_text = ""
     result_text += result["weather"]
-    # result_text += result["eClass"]
+    result_text += "--------------------------------------------------------------------------------\n"
+    result_text += result["eClass"]
+    result_text += "--------------------------------------------------------------------------------\n"
     result_text += result["news"]
+    result_text += "--------------------------------------------------------------------------------\n"
     result_text += result["sports"]
 
     await context.bot.send_message(
@@ -288,8 +289,7 @@ async def test(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
 
 async def input_id(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    user_data[str(update.message.chat_id)]["login_info"]["id"] = update.message.text
-    json_manager.save_user_data("user_data.json", user_data)
+    temp_login_info[0] = update.message.text
 
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
@@ -300,13 +300,29 @@ async def input_id(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
 
 async def input_pw(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    user_data[str(update.message.chat_id)]["login_info"]["pw"] = update.message.text
-    json_manager.save_user_data("user_data.json", user_data)
+    temp_login_info[1] = update.message.text
 
-    await context.bot.send_message(
-        chat_id=update.effective_chat.id,
-        text="eClass 로그인 정보가 등록되었습니다.",
+    result = Queue()
+    thread = threading.Thread(
+        target=scrap.eClass_check,
+        args=[result, user_data[str(update.message.chat_id)]["login_info"]],
     )
+    thread.start()
+    thread.join()
+
+    if result.get():
+        user_data[str(update.message.chat_id)]["login_info"][0] = temp_login_info[0]
+        user_data[str(update.message.chat_id)]["login_info"][1] = temp_login_info[1]
+        json_manager.save_user_data("user_data.json", user_data)
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text="eClass 로그인 정보가 등록되었습니다.",
+        )
+    else:
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text="eClass 로그인 정보가 올바르지 않습니다.",
+        )
 
     return ConversationHandler.END
 
@@ -330,7 +346,7 @@ if __name__ == "__main__":
     help_handler = CommandHandler("help", call_help)
     select_keyword_handler = CommandHandler("selectkeyword", call_selectkeyword)
     select_locate_handler = CommandHandler("selectlocate", call_selectlocate)
-    register_handler = CommandHandler("eclass", call_register)
+    # register_handler = CommandHandler("eclass", call_register)
     today_handler = CommandHandler("today", call_today)
 
     # eclassid_handler = CommandHandler("eclassid", call_eclassid)
@@ -342,7 +358,7 @@ if __name__ == "__main__":
     application.add_handler(help_handler)
     application.add_handler(select_keyword_handler)
     application.add_handler(select_locate_handler)
-    application.add_handler(register_handler)
+    # application.add_handler(register_handler)
     application.add_handler(today_handler)
 
     select_handler = CommandHandler("selectsports", call_selectsports)
@@ -352,7 +368,7 @@ if __name__ == "__main__":
     application.add_handler(callback_handler)
 
     eclass_register_handler = ConversationHandler(
-        entry_points=[CommandHandler("test", test)],
+        entry_points=[CommandHandler("eclasslogin", test)],
         states={
             INPUT_ID: [MessageHandler(filters.TEXT & (~filters.COMMAND), input_id)],
             INPUT_PW: [MessageHandler(filters.TEXT & (~filters.COMMAND), input_pw)],
