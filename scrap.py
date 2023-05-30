@@ -134,6 +134,9 @@ def get_weather(result: Queue().queue, location):
 
     out_text += "\n"
 
+    browser.close()
+    p.stop()
+
     result.put({"weather": out_text})
 
 
@@ -149,6 +152,9 @@ def location_check(result, location):
 
     soup = BeautifulSoup(page.content(), "lxml")
     weather = soup.find("section", class_="sc_new cs_weather_new _cs_weather")
+
+    browser.close()
+    p.stop()
 
     if weather is None:
         result.put(False)
