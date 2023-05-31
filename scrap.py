@@ -141,15 +141,17 @@ def get_eClass(result: Queue().queue, user):
     for sub in subject_list:
         out_text += f"{sub}\n"
 
-    out_text += "할일 - "
     todo = soup.find("div", title="Todo List")
     todo = todo.find("div", id="todoList_cnt")
-    out_text += todo.text + "\n"
+    if todo:
+        out_text += "할일 - "
+        out_text += todo.text + "\n"
 
-    out_text += "알림 - "
     alarm = soup.find("div", title="알림")
     alarm = alarm.find("div", id="notice_cnt")
-    out_text += alarm.text + "\n"
+    if alarm:
+        out_text += "알림 - "
+        out_text += alarm.text + "\n"
 
     browser.close()
     p.stop()
