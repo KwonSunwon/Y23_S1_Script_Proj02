@@ -18,12 +18,28 @@ from telegram.ext import (
 )
 from telegram.constants import ChatAction
 
+from cryptography.fernet import Fernet
+
 import myToken
 import json_manager
 import scrap
+from scrap import SPORTS
 
 user_data = {}
 temp_login_info = ["", ""]
+
+
+REGISTER_MESSAGE = "/start 명령어를 통해 봇을 시작해주세요."
+
+
+async def check_registered_user(update, context):
+    if str(update.message.chat_id) not in user_data:
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text=REGISTER_MESSAGE,
+        )
+        return False
+    return True
 
 
 async def call_help(update, context):
@@ -31,14 +47,15 @@ async def call_help(update, context):
         chat_id=update.effective_chat.id,
         text="""
 다음은 명령어 목록입니다.
+/start : 봇 시작
 /help : 도움말
 
 /today : 오늘 요약
 
-/selectkeyword <키워드> : 뉴스 검색 키워드 선택
-/selectlocate <지역> : 날씨 안내 지역 선택
+/keyword <키워드> : 뉴스 검색 키워드 선택
+/location <지역> : 날씨 안내 지역 선택
 
-/selectsports : 스포츠 뉴스 종목 선택
+/sports : 스포츠 뉴스 종목 선택
 
 /eclasslogin : eClass 로그인 정보 입력""",
     )
@@ -59,7 +76,7 @@ async def introduce(update, context):
 
     if update.message.chat_id not in user_data:
         user_data[str(update.message.chat_id)] = {
-            "login_info": ["", ""],  # id, pw
+            "login_info": ["", "", ""],  # id, pw, key
             "sports": "kfootball",
             "location": "서울",
             "keyword": "넥슨",
@@ -75,6 +92,9 @@ async def echo(update, context):
 
 
 async def call_selectsports(update, context):
+    if not await check_registered_user(update, context):
+        return
+
     task_buttons = [
         [
             InlineKeyboardButton("야구", callback_data=1),
@@ -106,7 +126,7 @@ async def call_selectsports(update, context):
 
     await context.bot.send_message(
         chat_id=update.message.chat_id,
-        text=f"현재 선택 종목은 {target_sports}입니다.\r\n종목을 선택해주세요.",
+        text=f"현재 선택 종목은 {SPORTS[target_sports]}입니다.\r\n종목을 선택해주세요.",
         reply_markup=reply_markup,
     )
 
@@ -123,31 +143,22 @@ async def button_callback(update, context):
         )
         return
 
-    sports_text = ""
     sports = ""
     if data == "1":
-        sports_text = "야구"
         sports = "kbaseball"
     elif data == "2":
-        sports_text = "해외야구"
         sports = "wbaseball"
     elif data == "3":
-        sports_text = "축구"
         sports = "kfootball"
     elif data == "4":
-        sports_text = "해외축구"
         sports = "wfootball"
     elif data == "5":
-        sports_text = "농구"
         sports = "basketball"
     elif data == "6":
-        sports_text = "배구"
         sports = "volleyball"
     elif data == "7":
-        sports_text = "골프"
         sports = "golf"
     elif data == "8":
-        sports_text = "일반"
         sports = "general"
 
     user_data[str(query.message.chat_id)]["sports"] = sports
@@ -155,15 +166,18 @@ async def button_callback(update, context):
     await context.bot.edit_message_text(
         chat_id=query.message.chat_id,
         message_id=query.message.message_id,
-        text=f"스포츠 뉴스 종목이 {sports_text}로 변경되었습니다.",
+        text=f"스포츠 뉴스 종목이 {SPORTS[sports]}로 변경되었습니다.",
     )
 
 
 async def call_selectkeyword(update, context):
+    if not await check_registered_user(update, context):
+        return
+
     if len(context.args) == 0:
         await context.bot.send_message(
             chat_id=update.effective_chat.id,
-            text="키워드를 입력해주세요.\n예시: /selectkeyword 넥슨",
+            text="키워드를 입력해주세요.\n예시: /keyword 넥슨",
         )
         return
 
@@ -177,10 +191,13 @@ async def call_selectkeyword(update, context):
 
 
 async def call_selectlocate(update, context):
+    if not await check_registered_user(update, context):
+        return
+
     if len(context.args) == 0:
         await context.bot.send_message(
             chat_id=update.effective_chat.id,
-            text="지역을 입력해주세요.\n예시: /selectlocate 서울",
+            text="지역을 입력해주세요.\n예시: /location 서울",
         )
         return
 
@@ -219,6 +236,9 @@ async def call_register(update, context):
 
 
 async def call_today(update, context):
+    if not await check_registered_user(update, context):
+        return
+
     await context.bot.send_chat_action(
         chat_id=update.effective_chat.id,
         action=ChatAction.TYPING,
@@ -258,7 +278,6 @@ async def call_today(update, context):
 
     result = defaultdict(str)
     for r in scrap_result.queue:
-        # print(f"{type(r)} - {r}")
         key, val = r.popitem()
         result[key] = val
 
@@ -280,7 +299,12 @@ async def call_today(update, context):
 INPUT_ID, INPUT_PW = range(2)
 
 
-async def test(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def call_eClass_register(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> int:
+    if not await check_registered_user(update, context):
+        return
+
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
         text="eClass 아이디를 입력해주세요.",
@@ -305,15 +329,24 @@ async def input_pw(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     result = Queue()
     thread = threading.Thread(
         target=scrap.eClass_check,
-        args=[result, user_data[str(update.message.chat_id)]["login_info"]],
+        args=[result, temp_login_info],
     )
     thread.start()
     thread.join()
 
     if result.get():
         user_data[str(update.message.chat_id)]["login_info"][0] = temp_login_info[0]
-        user_data[str(update.message.chat_id)]["login_info"][1] = temp_login_info[1]
+
+        password = temp_login_info[1]
+        key = Fernet.generate_key()
+        cipher_suite = Fernet(key)
+        password = cipher_suite.encrypt(password.encode())
+
+        user_data[str(update.message.chat_id)]["login_info"][1] = password.decode()
+        user_data[str(update.message.chat_id)]["login_info"][2] = key.decode()
+
         json_manager.save_user_data("user_data.json", user_data)
+
         await context.bot.send_message(
             chat_id=update.effective_chat.id,
             text="eClass 로그인 정보가 등록되었습니다.",
@@ -344,8 +377,8 @@ if __name__ == "__main__":
 
     start_handler = CommandHandler("start", introduce)
     help_handler = CommandHandler("help", call_help)
-    select_keyword_handler = CommandHandler("selectkeyword", call_selectkeyword)
-    select_locate_handler = CommandHandler("selectlocate", call_selectlocate)
+    select_keyword_handler = CommandHandler("keyword", call_selectkeyword)
+    select_locate_handler = CommandHandler("location", call_selectlocate)
     # register_handler = CommandHandler("eclass", call_register)
     today_handler = CommandHandler("today", call_today)
 
@@ -361,14 +394,14 @@ if __name__ == "__main__":
     # application.add_handler(register_handler)
     application.add_handler(today_handler)
 
-    select_handler = CommandHandler("selectsports", call_selectsports)
+    select_handler = CommandHandler("sports", call_selectsports)
     callback_handler = CallbackQueryHandler(button_callback)
 
     application.add_handler(select_handler)
     application.add_handler(callback_handler)
 
     eclass_register_handler = ConversationHandler(
-        entry_points=[CommandHandler("eclasslogin", test)],
+        entry_points=[CommandHandler("eclasslogin", call_eClass_register)],
         states={
             INPUT_ID: [MessageHandler(filters.TEXT & (~filters.COMMAND), input_id)],
             INPUT_PW: [MessageHandler(filters.TEXT & (~filters.COMMAND), input_pw)],

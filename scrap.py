@@ -2,6 +2,7 @@ from queue import Queue
 from bs4 import BeautifulSoup
 from playwright.sync_api import sync_playwright
 import lxml
+from cryptography.fernet import Fernet
 
 
 SPORTS = {
@@ -30,6 +31,12 @@ def get_news(result: Queue().queue, keyword):
     soup = BeautifulSoup(page.content(), "lxml")
     news_list = soup.find_all("div", class_="news_area")
     news_list = news_list[:3]
+
+    if not news_list:
+        browser.close()
+        p.stop()
+        result.put({"news": f"{keyword}에 대한 오늘 뉴스가 없습니다.\n"})
+        return
 
     out_text = f"뉴스 - {keyword}\n"
 
@@ -105,6 +112,14 @@ def eClass_check(result: Queue().queue, user):
 def get_eClass(result: Queue().queue, user):
     url = "https://eclass.tukorea.ac.kr/ilos/main/member/login_form.acl"
 
+    if user[1] != "":
+        key = user[2].encode()
+        cipher_suite = Fernet(key)
+        password = cipher_suite.decrypt(user[1].encode()).decode()
+    else:
+        result.put({"eClass": "eClass정보를 등록해주세요.\n"})
+        return
+
     p = sync_playwright().start()
     browser = p.chromium.launch(headless=True).new_context(
         user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36"
@@ -113,7 +128,7 @@ def get_eClass(result: Queue().queue, user):
     page.goto(url)
 
     page.locator('input[name="usr_id"]').fill(user[0])
-    page.locator('input[name="usr_pwd"]').fill(user[1])
+    page.locator('input[name="usr_pwd"]').fill(password)
     # page.locator('input[name="usr_id"]').fill("2019182003")
     # page.locator('input[name="usr_pwd"]').fill("3183129")
     page.locator("#login_btn").click()
@@ -123,7 +138,7 @@ def get_eClass(result: Queue().queue, user):
     if page.url == url:
         browser.close()
         p.stop()
-        result.put({"eClass": "로그인 실패\n/eclasslogin 을 통해 다시 입력해주세요."})
+        result.put({"eClass": "로그인 실패\n/eclasslogin 을 통해 다시 입력해주세요.\n"})
         return
 
     soup = BeautifulSoup(page.content(), "lxml")
@@ -137,21 +152,24 @@ def get_eClass(result: Queue().queue, user):
 
     # print(subject_list)
 
-    out_text = "오늘 수업\n"
-    for sub in subject_list:
-        out_text += f"{sub}\n"
+    if subject_list:
+        out_text = "오늘 수업\n"
+        for sub in subject_list:
+            out_text += f"{sub}\n"
+    else:
+        out_text = "오늘은 수업이 없습니다.\n"
 
     todo = soup.find("div", title="Todo List")
     todo = todo.find("div", id="todoList_cnt")
     if todo:
         out_text += "할일 - "
-        out_text += todo.text + "\n"
+        out_text += todo.text + "개\n"
 
     alarm = soup.find("div", title="알림")
     alarm = alarm.find("div", id="notice_cnt")
     if alarm:
         out_text += "알림 - "
-        out_text += alarm.text + "\n"
+        out_text += alarm.text + "개\n"
 
     browser.close()
     p.stop()
@@ -204,8 +222,8 @@ def get_weather(result: Queue().queue, location):
 
     # print(f"{temp1} {temp2}")
 
-    out_text = "날씨\n"
-    out_text += f"미세먼지 {dust1.text} 초미세먼지 {dust2.text}\n"
+    out_text = f"날씨 - {location}\n"
+    out_text += f"미세먼지 {dust1.text}\n초미세먼지 {dust2.text}\n"
     out_text += f"강수확률 오전{rainfall1} 오후{rainfall2}\n"
     out_text += f"{temp1} {temp2}\n"
 
